@@ -78,6 +78,14 @@ export interface Insumo {
   fechaAgregado: string // fecha de creación
 }
 
+interface LoadingStates {
+  configuracion: boolean
+  insumos: boolean
+  productosBase: boolean
+  lotes: boolean
+  dashboard: boolean
+}
+
 interface AppContextType {
   configuracion: Configuracion
   setConfiguracion: (config: Configuracion) => void
@@ -133,6 +141,7 @@ interface AppContextType {
   obtenerUltimoLote: (productoBaseId: string) => LoteProducto | null
   actualizarCantidadUtilizada: (insumoId: string, cantidad: number) => void
   eliminarTodosLosDatos: () => Promise<void>
+  loadingStates: LoadingStates
   // Estados de carga y error
   loading: boolean
   error: string | null
@@ -154,6 +163,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // Estados de carga y error
   const [loading, setLoading] = useState(false)
+  const [loadingStates, setLoadingStates] = useState<LoadingStates>({
+    configuracion: true,
+    insumos: true,
+    productosBase: true,
+    lotes: true,
+    dashboard: true,
+  })
   const [error, setError] = useState<string | null>(null)
 
   // Función para generar UUID v4
@@ -200,24 +216,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
             costosIndirectos: configSupabase.costosIndirectosMensuales,
             horasProduccion: configSupabase.horasProduccionMensuales,
           })
+          setLoadingStates((prev) => ({ ...prev, configuracion: false }))
 
           // Cargar insumos
           console.log("📦 Cargando inventario de materias primas...")
           const insumosSupabase = await getInsumos()
           setInsumosState(insumosSupabase)
           console.log(`✅ ${insumosSupabase.length} materias primas cargadas`)
+          setLoadingStates((prev) => ({ ...prev, insumos: false }))
 
           // Cargar productos base
           console.log("🍰 Cargando catálogo de productos...")
           const productosBaseSupabase = await getProductosBase()
           setProductosBaseState(productosBaseSupabase)
           console.log(`✅ ${productosBaseSupabase.length} productos base cargados`)
+          setLoadingStates((prev) => ({ ...prev, productosBase: false }))
 
           // Cargar lotes
           console.log("📦 Cargando historial de lotes...")
           const lotesSupabase = await getLotes()
           setLotesState(lotesSupabase)
           console.log(`✅ ${lotesSupabase.length} lotes cargados`)
+          setLoadingStates((prev) => ({ ...prev, lotes: false, dashboard: false }))
 
           console.log("🎉 ¡Aplicación lista! Todos los datos cargados desde Supabase")
         } catch (error) {
@@ -915,7 +935,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       <div className="flex items-center justify-center h-screen bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-lg font-medium text-gray-900">Matriz de Rentabilidad Sin TACC</div>
+          <div className="text-lg font-medium text-gray-900">Matriz de Rentabilidad</div>
           <div className="text-sm text-gray-600">
             {loading ? "Conectando con Supabase..." : "Cargando tu información empresarial..."}
           </div>
@@ -957,6 +977,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         eliminarTodosLosDatos,
         loading,
         error,
+        loadingStates,
       }}
     >
       {children}
