@@ -29,7 +29,6 @@ import { useAppContext, type IngredienteReceta, type ProductoBase } from "../con
 import { useConfirm } from "../hooks/useConfirm"
 import { useUnsavedChanges } from "../hooks/useUnsavedChanges"
 import { toast } from "sonner"
-import { SkeletonTable } from "@/components/skeletons/SkeletonTable"
 
 interface ProductosProps {
   onPendingChanges?: (hasChanges: boolean) => void
@@ -47,7 +46,6 @@ export function Productos({ onPendingChanges }: ProductosProps = {}) {
     eliminarProductoBase,
     obtenerLotesPorProducto,
     obtenerUltimoLote,
-    loadingStates,
   } = useAppContext()
 
   const { confirm } = useConfirm()
@@ -221,9 +219,7 @@ export function Productos({ onPendingChanges }: ProductosProps = {}) {
             <CardDescription>Todos tus productos con información del último lote producido</CardDescription>
           </CardHeader>
           <CardContent>
-            {loadingStates.productosBase ? (
-              <SkeletonTable rows={3} columns={7} />
-            ) : productosBase.length === 0 ? (
+            {productosBase.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">No hay productos registrados</p>
                 <p className="text-sm text-gray-400">Crea tu primer producto para comenzar</p>

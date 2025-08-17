@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { SkeletonTable } from "@/components/skeletons/SkeletonTable"
+
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,16 +24,8 @@ interface InsumosProps {
 }
 
 export function Insumos({ onPendingChanges }: InsumosProps = {}) {
-  const {
-    insumos,
-    agregarInsumo,
-    editarInsumo,
-    eliminarInsumo,
-    productosBase,
-    lotes,
-    actualizarCantidadUtilizada,
-    loadingStates,
-  } = useAppContext()
+  const { insumos, agregarInsumo, editarInsumo, eliminarInsumo, productosBase, lotes, actualizarCantidadUtilizada } =
+    useAppContext()
   const { confirm } = useConfirm()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -396,9 +388,7 @@ export function Insumos({ onPendingChanges }: InsumosProps = {}) {
             <CardDescription>Todas tus materias primas registradas con control de stock y consumo</CardDescription>
           </CardHeader>
           <CardContent>
-            {loadingStates.insumos ? (
-              <SkeletonTable rows={5} columns={8} />
-            ) : insumos.length === 0 ? (
+            {insumos.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">No hay materias primas registradas</p>
                 <p className="text-sm text-gray-400">Agrega tu primera materia prima para comenzar</p>

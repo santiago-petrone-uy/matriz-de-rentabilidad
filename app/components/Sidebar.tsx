@@ -1,209 +1,180 @@
 "use client"
 
-import { Home, Package, ChefHat, Calculator, BookOpen, ChevronLeft, ChevronRight, Database, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useAuth } from "./auth/AuthProvider"
+import { useState } from "react"
+import {
+  Home,
+  Package,
+  ShoppingCart,
+  Settings,
+  FileText,
+  Database,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+} from "lucide-react"
+import { useAuth } from "../components/auth/AuthProvider"
 import { useConfirm } from "../hooks/useConfirm"
-import { toast } from "sonner"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface SidebarProps {
-  activeView: string
-  setActiveView: (view: string) => void
-  isCollapsed: boolean
-  setIsCollapsed: (collapsed: boolean) => void
+  activeSection: string
+  onSectionChange: (section: string) => void
 }
 
-export function Sidebar({ activeView, setActiveView, isCollapsed, setIsCollapsed }: SidebarProps) {
+const menuItems = [
+  { id: "dashboard", label: "Inicio", icon: Home },
+  { id: "insumos", label: "Materias Primas", icon: Package },
+  { id: "productos", label: "Productos", icon: ShoppingCart },
+  { id: "configuracion-costos", label: "Configuración de Costos", icon: Settings },
+  { id: "documentacion", label: "Documentación", icon: FileText },
+  { id: "datos-respaldos", label: "Datos y Respaldos", icon: Database },
+]
+
+export default function Sidebar({ activeSection, onSectionChange }: SidebarProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const { user, signOut } = useAuth()
-  const { confirm } = useConfirm()
-
-  const menuItems = [
-    { id: "dashboard", label: "Inicio", icon: Home, group: null },
-    { id: "configuracion-costos", label: "Costos Indirectos", icon: Calculator, group: "operaciones" },
-    { id: "insumos", label: "Materias Primas", icon: Package, group: "operaciones" },
-    { id: "productos", label: "Mis Productos", icon: ChefHat, group: "operaciones" },
-    { id: "guia-calculos", label: "Guía de Cálculos", icon: BookOpen, group: "sistema" },
-    { id: "datos-respaldos", label: "Datos y Respaldos", icon: Database, group: "sistema" },
-  ]
-
-  // Extraer iniciales del email
-  const getInitialsFromEmail = (email: string): string => {
-    const username = email.split("@")[0]
-    if (username.length >= 2) {
-      return username.substring(0, 2).toUpperCase()
-    }
-    return username.charAt(0).toUpperCase() + "U"
-  }
+  const confirm = useConfirm()
 
   const handleSignOut = async () => {
     const confirmed = await confirm({
       title: "Cerrar Sesión",
-      description: "¿Estás seguro de que quieres cerrar sesión?",
+      message: "¿Estás seguro de que quieres cerrar sesión?",
       confirmText: "Cerrar Sesión",
       cancelText: "Cancelar",
-      variant: "default",
-      icon: "logout",
     })
 
     if (confirmed) {
-      await signOut()
-      toast.success("Sesión cerrada exitosamente")
+      try {
+        await signOut()
+        // Simple alert instead of toast
+        alert("Sesión cerrada correctamente")
+      } catch (error) {
+        console.error("Error al cerrar sesión:", error)
+        alert("Error al cerrar sesión")
+      }
     }
   }
 
-  const renderGroupTitle = (group: string) => {
-    if (isCollapsed) return null
-
-    const titles = {
-      operaciones: "Operaciones",
-      sistema: "Sistema",
+  const getInitials = (email: string) => {
+    const parts = email.split("@")[0].split(".")
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase()
     }
-
-    return (
-      <div className="py-2 text-xs font-normal text-gray-500 tracking-wider">
-        {titles[group as keyof typeof titles]}
-      </div>
-    )
-  }
-
-  const renderMenuItems = () => {
-    const groups = ["dashboard", "operaciones", "sistema"]
-
-    return groups.map((group) => {
-      const groupItems =
-        group === "dashboard"
-          ? menuItems.filter((item) => item.group === null)
-          : menuItems.filter((item) => item.group === group)
-
-      if (groupItems.length === 0) return null
-
-      return (
-        <div key={group}>
-          {group !== "dashboard" && renderGroupTitle(group)}
-          <div className={`${group !== "dashboard" ? "space-y-1 mb-4" : "space-y-1 mb-6"}`}>
-            {groupItems.map((item) => {
-              const Icon = item.icon
-              return (
-                <Tooltip key={item.id}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={activeView === item.id ? "default" : "ghost"}
-                      className={`w-full ${isCollapsed ? "justify-center px-0" : "justify-start"} transition-all duration-200`}
-                      onClick={() => setActiveView(item.id)}
-                    >
-                      <Icon className={`h-4 w-4 ${!isCollapsed ? "mr-2" : ""}`} />
-                      {!isCollapsed && item.label}
-                    </Button>
-                  </TooltipTrigger>
-                  {isCollapsed && (
-                    <TooltipContent>
-                      <p>{item.label}</p>
-                    </TooltipContent>
-                  )}
-                </Tooltip>
-              )
-            })}
-          </div>
-        </div>
-      )
-    })
+    return email.substring(0, 2).toUpperCase()
   }
 
   return (
     <TooltipProvider>
       <div
-        className={`${isCollapsed ? "w-16" : "w-72"} bg-white shadow-lg border-r transition-all duration-300 flex flex-col`}
+        className={`bg-white border-r border-gray-200 flex flex-col transition-all duration-300 ${
+          isCollapsed ? "w-16" : "w-64"
+        }`}
       >
-        {/* Header con botón de colapsar */}
-        <div className={`p-6 flex items-center ${isCollapsed ? "justify-center" : "justify-between"}`}>
-          <div className={`${isCollapsed ? "hidden" : "block"}`}>
-            <h1 className="text-xl font-bold text-gray-800">MdR</h1>
-            <p className="text-sm text-gray-600">Matriz de Rentabilidad</p>
-          </div>
+        {/* Header */}
+        <div className="p-4 flex items-center justify-between">
+          {!isCollapsed && (
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">MdR</h1>
+              <p className="text-sm text-gray-600">Matriz de Rentabilidad</p>
+            </div>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
+              <button
                 onClick={() => setIsCollapsed(!isCollapsed)}
-                className={`p-1 h-auto hover:bg-gray-100 transition-all duration-200 ${isCollapsed ? "mx-auto" : ""}`}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex items-center justify-center"
               >
                 {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </Button>
+              </button>
             </TooltipTrigger>
-            <TooltipContent>
-              <p>{isCollapsed ? "Expandir menú" : "Colapsar menú"}</p>
-            </TooltipContent>
+            <TooltipContent side="right">{isCollapsed ? "Expandir menú" : "Colapsar menú"}</TooltipContent>
           </Tooltip>
         </div>
 
-        {/* Navegación */}
-        <nav className="p-4 flex-1">{renderMenuItems()}</nav>
+        {/* Navigation */}
+        <nav className="flex-1 px-4">
+          <ul className="space-y-2">
+            {menuItems.map((item) => {
+              const Icon = item.icon
+              const isActive = activeSection === item.id
 
-        {/* Información del usuario y controles */}
+              return (
+                <li key={item.id}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => onSectionChange(item.id)}
+                        className={`w-full flex items-center px-3 py-2 rounded-lg text-left transition-colors ${
+                          isActive ? "bg-gray-100 text-gray-900" : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                      >
+                        <Icon className={`h-5 w-5 ${isCollapsed ? "mx-auto" : "mr-3"}`} />
+                        {!isCollapsed && <span className="font-medium">{item.label}</span>}
+                      </button>
+                    </TooltipTrigger>
+                    {isCollapsed && <TooltipContent side="right">{item.label}</TooltipContent>}
+                  </Tooltip>
+                </li>
+              )
+            })}
+          </ul>
+        </nav>
+
+        {/* User Section */}
         <div className="p-4 space-y-3">
-          {/* Información del usuario */}
           {user && (
-            <div className={`${isCollapsed ? "flex justify-center" : "block"}`}>
-              {isCollapsed ? (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-medium">
-                      {getInitialsFromEmail(user.email)}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{user.email}</p>
-                  </TooltipContent>
-                </Tooltip>
-              ) : (
-                <div className="flex items-center space-x-3 mb-1">
-                  <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-xs font-medium">
-                    {getInitialsFromEmail(user.email)}
-                  </div>
-                  <div className="flex flex-col justify-center">
+            <>
+              {!isCollapsed ? (
+                <div className="flex items-center space-x-3">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-sm font-medium">
+                        {getInitials(user.email)}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">{user.email}</TooltipContent>
+                  </Tooltip>
+                  <div className="flex-1 min-w-0">
                     <div className="text-sm text-gray-700 font-medium truncate">{user.email}</div>
                     <div className="text-xs text-gray-600">Plan Básico</div>
                   </div>
                 </div>
+              ) : (
+                <div className="flex justify-center">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="w-8 h-8 bg-black text-white rounded-full flex items-center justify-center text-sm font-medium">
+                        {getInitials(user.email)}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <div className="text-center">
+                        <div className="font-medium">{user.email}</div>
+                        <div className="text-xs text-gray-600">Plan Básico</div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               )}
-            </div>
+            </>
           )}
 
-          {/* Botón de logout */}
-          {!isCollapsed && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleSignOut}
-              className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 hover:text-gray-800 transition-all duration-200 justify-center"
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Cerrar Sesión
-            </Button>
-          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={handleSignOut}
+                className={`w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-lg transition-colors flex items-center ${
+                  isCollapsed ? "justify-center" : "justify-center space-x-2"
+                }`}
+              >
+                <LogOut className="h-4 w-4" />
+                {!isCollapsed && <span>Cerrar Sesión</span>}
+              </button>
+            </TooltipTrigger>
+            {isCollapsed && <TooltipContent side="right">Cerrar Sesión</TooltipContent>}
+          </Tooltip>
 
-          {isCollapsed && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleSignOut}
-                  className="w-full justify-center p-2 hover:bg-gray-100 text-gray-700 hover:text-gray-800 transition-all duration-200"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Cerrar sesión</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-
-          {/* Leyenda de versión */}
-          {!isCollapsed && <div className="text-xs text-gray-500 text-center pt-2">MDR v0.1 © 2025</div>}
+          <div className="text-center text-xs text-gray-500">MDR v0.1 © 2025</div>
         </div>
       </div>
     </TooltipProvider>

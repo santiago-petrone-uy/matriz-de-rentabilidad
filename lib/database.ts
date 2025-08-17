@@ -1,5 +1,10 @@
-import { supabase } from "./supabase"
-import type { Configuracion, Insumo, ProductoBase, LoteProducto } from "../app/context/AppContext"
+import { createClient } from "@supabase/supabase-js"
+import type { Insumo, ProductoBase, Lote, Configuracion } from "../app/context/AppContext"
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Función para generar UUID v4
 function generateUUID(): string {
@@ -14,7 +19,7 @@ function generateUUID(): string {
 // CONFIGURACIÓN
 // =============================================
 
-export async function getConfiguracion(): Promise<Configuracion> {
+export async function getConfiguracion(): Promise<Configuracion | null> {
   try {
     const {
       data: { user },
@@ -27,28 +32,10 @@ export async function getConfiguracion(): Promise<Configuracion> {
       throw error
     }
 
-    // Si no existe configuración, devolver valores por defecto
-    if (!data) {
-      return {
-        valorHoraProduccion: 0,
-        costosIndirectosMensuales: 0,
-        horasProduccionMensuales: 0,
-      }
-    }
-
-    return {
-      valorHoraProduccion: data.valor_hora_produccion,
-      costosIndirectosMensuales: data.costos_indirectos_mensuales,
-      horasProduccionMensuales: data.horas_produccion_mensuales,
-    }
+    return data
   } catch (error) {
     console.error("Error cargando configuración:", error)
-    // Devolver valores por defecto en caso de error
-    return {
-      valorHoraProduccion: 0,
-      costosIndirectosMensuales: 0,
-      horasProduccionMensuales: 0,
-    }
+    return null
   }
 }
 
@@ -59,18 +46,9 @@ export async function saveConfiguracion(config: Configuracion): Promise<boolean>
     } = await supabase.auth.getUser()
     if (!user) throw new Error("Usuario no autenticado")
 
-    const { error } = await supabase.from("configuracion").upsert(
-      {
-        user_id: user.id,
-        valor_hora_produccion: config.valorHoraProduccion,
-        costos_indirectos_mensuales: config.costosIndirectosMensuales,
-        horas_produccion_mensuales: config.horasProduccionMensuales,
-        updated_at: new Date().toISOString(),
-      },
-      {
-        onConflict: "user_id",
-      },
-    )
+    const { error } = await supabase.from("configuracion").upsert(config, {
+      onConflict: "user_id",
+    })
 
     if (error) throw error
 
@@ -81,14 +59,9 @@ export async function saveConfiguracion(config: Configuracion): Promise<boolean>
   }
 }
 
-export async function deleteConfiguracion(): Promise<boolean> {
+export async function deleteConfiguracion(userId: string): Promise<boolean> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("Usuario no autenticado")
-
-    const { error } = await supabase.from("configuracion").delete().eq("user_id", user.id)
+    const { error } = await supabase.from("configuracion").delete().eq("user_id", userId)
 
     if (error) throw error
 
@@ -110,65 +83,34 @@ export async function getInsumos(): Promise<Insumo[]> {
     } = await supabase.auth.getUser()
     if (!user) throw new Error("Usuario no autenticado")
 
-    const { data, error } = await supabase
-      .from("insumos")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
+    const { data, error } = await supabase.from("insumos").select("data").eq("user_id", user.id).single()
 
     if (error) throw error
 
-    // Convertir de formato Supabase a formato de la aplicación
-    return (data || []).map((item) => ({
-      id: item.id,
-      nombre: item.nombre,
-      proveedor: item.proveedor,
-      costoCompra: item.costo_compra,
-      cantidadPaquetes: item.cantidad_paquetes,
-      cantidadCompra: item.cantidad_compra,
-      unidadCompra: item.unidad_compra as "kg" | "g" | "l" | "ml" | "unidades",
-      costoUnitarioNormalizado: item.costo_unitario_normalizado,
-      cantidadUtilizada: item.cantidad_utilizada,
-      fechaAgregado: item.created_at,
-    }))
+    return data?.data || []
   } catch (error) {
     console.error("Error cargando insumos:", error)
     return []
   }
 }
 
-export async function saveInsumo(insumo: Insumo): Promise<boolean> {
+export async function saveInsumos(userId: string, insumos: Insumo[]): Promise<boolean> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("Usuario no autenticado")
-
-    // Si el insumo no tiene un UUID válido, generar uno nuevo
-    let insumoId = insumo.id
-    if (!insumoId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      insumoId = generateUUID()
-    }
-
-    const { error } = await supabase.from("insumos").upsert({
-      id: insumoId,
-      user_id: user.id,
-      nombre: insumo.nombre,
-      proveedor: insumo.proveedor,
-      costo_compra: insumo.costoCompra,
-      cantidad_paquetes: insumo.cantidadPaquetes,
-      cantidad_compra: insumo.cantidadCompra,
-      unidad_compra: insumo.unidadCompra,
-      costo_unitario_normalizado: insumo.costoUnitarioNormalizado,
-      cantidad_utilizada: insumo.cantidadUtilizada,
-      updated_at: new Date().toISOString(),
-    })
+    const { error } = await supabase.from("insumos").upsert(
+      {
+        user_id: userId,
+        data: insumos,
+      },
+      {
+        onConflict: "user_id",
+      },
+    )
 
     if (error) throw error
 
     return true
   } catch (error) {
-    console.error("Error guardando insumo:", error)
+    console.error("Error guardando insumos:", error)
     return false
   }
 }
@@ -191,14 +133,9 @@ export async function deleteInsumo(insumoId: string): Promise<boolean> {
   }
 }
 
-export async function deleteAllInsumos(): Promise<boolean> {
+export async function deleteAllInsumos(userId: string): Promise<boolean> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("Usuario no autenticado")
-
-    const { error } = await supabase.from("insumos").delete().eq("user_id", user.id)
+    const { error } = await supabase.from("insumos").delete().eq("user_id", userId)
 
     if (error) throw error
 
@@ -282,59 +219,34 @@ export async function getProductosBase(): Promise<ProductoBase[]> {
     } = await supabase.auth.getUser()
     if (!user) throw new Error("Usuario no autenticado")
 
-    const { data, error } = await supabase
-      .from("productos_base")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
+    const { data, error } = await supabase.from("productos_base").select("data").eq("user_id", user.id).single()
 
     if (error) throw error
 
-    // Convertir de formato Supabase a formato de la aplicación
-    return (data || []).map((item) => ({
-      id: item.id,
-      nombre: item.nombre,
-      receta: item.receta || [],
-      tiempoManoObraLote: item.tiempo_mano_obra_lote,
-      rendimientoLote: item.rendimiento_lote,
-      fechaCreacion: item.created_at,
-      ultimoLote: item.ultimo_lote,
-    }))
+    return data?.data || []
   } catch (error) {
     console.error("Error cargando productos base:", error)
     return []
   }
 }
 
-export async function saveProductoBase(producto: ProductoBase): Promise<boolean> {
+export async function saveProductosBase(userId: string, productos: ProductoBase[]): Promise<boolean> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("Usuario no autenticado")
-
-    // Si el producto no tiene un UUID válido, generar uno nuevo
-    let productoId = producto.id
-    if (!productoId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      productoId = generateUUID()
-    }
-
-    const { error } = await supabase.from("productos_base").upsert({
-      id: productoId,
-      user_id: user.id,
-      nombre: producto.nombre,
-      receta: producto.receta,
-      tiempo_mano_obra_lote: producto.tiempoManoObraLote,
-      rendimiento_lote: producto.rendimientoLote,
-      ultimo_lote: producto.ultimoLote,
-      updated_at: new Date().toISOString(),
-    })
+    const { error } = await supabase.from("productos_base").upsert(
+      {
+        user_id: userId,
+        data: productos,
+      },
+      {
+        onConflict: "user_id",
+      },
+    )
 
     if (error) throw error
 
     return true
   } catch (error) {
-    console.error("Error guardando producto base:", error)
+    console.error("Error guardando productos base:", error)
     return false
   }
 }
@@ -357,14 +269,9 @@ export async function deleteProductoBase(productoId: string): Promise<boolean> {
   }
 }
 
-export async function deleteAllProductosBase(): Promise<boolean> {
+export async function deleteAllProductosBase(userId: string): Promise<boolean> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("Usuario no autenticado")
-
-    const { error } = await supabase.from("productos_base").delete().eq("user_id", user.id)
+    const { error } = await supabase.from("productos_base").delete().eq("user_id", userId)
 
     if (error) throw error
 
@@ -440,78 +347,41 @@ export async function updateUltimoLote(productoId: string, nuevoUltimoLote: numb
 // LOTES
 // =============================================
 
-export async function getLotes(): Promise<LoteProducto[]> {
+export async function getLotes(): Promise<Lote[]> {
   try {
     const {
       data: { user },
     } = await supabase.auth.getUser()
     if (!user) throw new Error("Usuario no autenticado")
 
-    const { data, error } = await supabase
-      .from("lotes")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
+    const { data, error } = await supabase.from("lotes").select("data").eq("user_id", user.id).single()
 
     if (error) throw error
 
-    // Convertir de formato Supabase a formato de la aplicación
-    return (data || []).map((item) => ({
-      id: item.id,
-      productoBaseId: item.producto_base_id,
-      numeroLote: item.numero_lote,
-      identificador: item.identificador,
-      costoTotalProduccion: item.costo_total_produccion,
-      margenGanancia: item.margen_ganancia,
-      precioVentaFinal: item.precio_venta_final,
-      fechaCreacion: item.created_at,
-      recetaUsada: item.receta_usada || [],
-      tiempoManoObraUsado: item.tiempo_mano_obra_usado,
-      rendimientoUsado: item.rendimiento_usado,
-      unidadesPorPaquete: item.unidades_por_paquete,
-      precioVentaPorPaquete: item.precio_venta_por_paquete,
-    }))
+    return data?.data || []
   } catch (error) {
     console.error("Error cargando lotes:", error)
     return []
   }
 }
 
-export async function saveLote(lote: LoteProducto): Promise<boolean> {
+export async function saveLotes(userId: string, lotes: Lote[]): Promise<boolean> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("Usuario no autenticado")
-
-    // Si el lote no tiene un UUID válido, generar uno nuevo
-    let loteId = lote.id
-    if (!loteId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
-      loteId = generateUUID()
-    }
-
-    const { error } = await supabase.from("lotes").upsert({
-      id: loteId,
-      user_id: user.id,
-      producto_base_id: lote.productoBaseId,
-      numero_lote: lote.numeroLote,
-      identificador: lote.identificador,
-      costo_total_produccion: lote.costoTotalProduccion,
-      margen_ganancia: lote.margenGanancia,
-      precio_venta_final: lote.precioVentaFinal,
-      receta_usada: lote.recetaUsada,
-      tiempo_mano_obra_usado: lote.tiempoManoObraUsado,
-      rendimiento_usado: lote.rendimientoUsado,
-      unidades_por_paquete: lote.unidadesPorPaquete,
-      precio_venta_por_paquete: lote.precioVentaPorPaquete,
-      updated_at: new Date().toISOString(),
-    })
+    const { error } = await supabase.from("lotes").upsert(
+      {
+        user_id: userId,
+        data: lotes,
+      },
+      {
+        onConflict: "user_id",
+      },
+    )
 
     if (error) throw error
 
     return true
   } catch (error) {
-    console.error("Error guardando lote:", error)
+    console.error("Error guardando lotes:", error)
     return false
   }
 }
@@ -534,14 +404,9 @@ export async function deleteLote(loteId: string): Promise<boolean> {
   }
 }
 
-export async function deleteAllLotes(): Promise<boolean> {
+export async function deleteAllLotes(userId: string): Promise<boolean> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("Usuario no autenticado")
-
-    const { error } = await supabase.from("lotes").delete().eq("user_id", user.id)
+    const { error } = await supabase.from("lotes").delete().eq("user_id", userId)
 
     if (error) throw error
 
@@ -552,9 +417,7 @@ export async function deleteAllLotes(): Promise<boolean> {
   }
 }
 
-export async function createLote(
-  loteData: Omit<LoteProducto, "id">,
-): Promise<{ success: boolean; lote?: LoteProducto }> {
+export async function createLote(loteData: Omit<Lote, "id">): Promise<{ success: boolean; lote?: Lote }> {
   try {
     const {
       data: { user },
@@ -562,7 +425,7 @@ export async function createLote(
     if (!user) throw new Error("Usuario no autenticado")
 
     const nuevoId = generateUUID()
-    const nuevoLote: LoteProducto = {
+    const nuevoLote: Lote = {
       ...loteData,
       id: nuevoId,
     }
@@ -594,7 +457,7 @@ export async function createLote(
   }
 }
 
-export async function getLotesByProductoBase(productoBaseId: string): Promise<LoteProducto[]> {
+export async function getLotesByProductoBase(productoBaseId: string): Promise<Lote[]> {
   try {
     const {
       data: { user },
@@ -635,68 +498,17 @@ export async function getLotesByProductoBase(productoBaseId: string): Promise<Lo
 // ELIMINACIÓN MASIVA
 // =============================================
 
-export async function deleteAllUserData(): Promise<{ success: boolean; errors: string[] }> {
+export async function deleteAllUserData(userId: string): Promise<void> {
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) throw new Error("Usuario no autenticado")
-
-    const errors: string[] = []
-
-    console.log("🗑️ Iniciando eliminación masiva de todos los datos del usuario...")
-
-    // 1. Eliminar todos los lotes
-    console.log("📦 Eliminando todos los lotes...")
-    const lotesResult = await deleteAllLotes()
-    if (!lotesResult) {
-      errors.push("Error eliminando lotes")
-    } else {
-      console.log("✅ Lotes eliminados")
-    }
-
-    // 2. Eliminar todos los productos base
-    console.log("🍰 Eliminando todos los productos base...")
-    const productosResult = await deleteAllProductosBase()
-    if (!productosResult) {
-      errors.push("Error eliminando productos base")
-    } else {
-      console.log("✅ Productos base eliminados")
-    }
-
-    // 3. Eliminar todos los insumos
-    console.log("📦 Eliminando todas las materias primas...")
-    const insumosResult = await deleteAllInsumos()
-    if (!insumosResult) {
-      errors.push("Error eliminando materias primas")
-    } else {
-      console.log("✅ Materias primas eliminadas")
-    }
-
-    // 4. Eliminar configuración
-    console.log("⚙️ Eliminando configuración...")
-    const configResult = await deleteConfiguracion()
-    if (!configResult) {
-      errors.push("Error eliminando configuración")
-    } else {
-      console.log("✅ Configuración eliminada")
-    }
-
-    const success = errors.length === 0
-
-    if (success) {
-      console.log("🎉 ¡Eliminación masiva completada exitosamente!")
-    } else {
-      console.log("⚠️ Eliminación masiva completada con errores:", errors)
-    }
-
-    return { success, errors }
+    await Promise.all([
+      deleteAllInsumos(userId),
+      deleteAllProductosBase(userId),
+      deleteAllLotes(userId),
+      deleteConfiguracion(userId),
+    ])
   } catch (error) {
-    console.error("❌ Error en eliminación masiva:", error)
-    return {
-      success: false,
-      errors: [error instanceof Error ? error.message : "Error desconocido"],
-    }
+    console.error("Error deleting user data:", error)
+    throw error
   }
 }
 
@@ -784,7 +596,7 @@ export async function migrateProductosBaseToSupabase(
   }
 }
 
-export async function migrateLotesToSupabase(lotes: LoteProducto[]): Promise<{ success: boolean; migrated: number }> {
+export async function migrateLotesToSupabase(lotes: Lote[]): Promise<{ success: boolean; migrated: number }> {
   try {
     const {
       data: { user },
@@ -804,5 +616,116 @@ export async function migrateLotesToSupabase(lotes: LoteProducto[]): Promise<{ s
   } catch (error) {
     console.error("Error migrando lotes:", error)
     return { success: false, migrated: 0 }
+  }
+}
+
+// Helper function to save a single insumo
+async function saveInsumo(insumo: Insumo): Promise<boolean> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("Usuario no autenticado")
+
+    // Si el insumo no tiene un UUID válido, generar uno nuevo
+    let insumoId = insumo.id
+    if (!insumoId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
+      insumoId = generateUUID()
+    }
+
+    const { error } = await supabase.from("insumos").upsert({
+      id: insumoId,
+      user_id: user.id,
+      nombre: insumo.nombre,
+      proveedor: insumo.proveedor,
+      costo_compra: insumo.costoCompra,
+      cantidad_paquetes: insumo.cantidadPaquetes,
+      cantidad_compra: insumo.cantidadCompra,
+      unidad_compra: insumo.unidadCompra,
+      costo_unitario_normalizado: insumo.costoUnitarioNormalizado,
+      cantidad_utilizada: insumo.cantidadUtilizada,
+      updated_at: new Date().toISOString(),
+    })
+
+    if (error) throw error
+
+    return true
+  } catch (error) {
+    console.error("Error guardando insumo:", error)
+    return false
+  }
+}
+
+// Helper function to save a single producto base
+async function saveProductoBase(producto: ProductoBase): Promise<boolean> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("Usuario no autenticado")
+
+    // Si el producto no tiene un UUID válido, generar uno nuevo
+    let productoId = producto.id
+    if (!productoId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
+      productoId = generateUUID()
+    }
+
+    const { error } = await supabase.from("productos_base").upsert({
+      id: productoId,
+      user_id: user.id,
+      nombre: producto.nombre,
+      receta: producto.receta,
+      tiempo_mano_obra_lote: producto.tiempoManoObraLote,
+      rendimiento_lote: producto.rendimientoLote,
+      ultimo_lote: producto.ultimoLote,
+      updated_at: new Date().toISOString(),
+    })
+
+    if (error) throw error
+
+    return true
+  } catch (error) {
+    console.error("Error guardando producto base:", error)
+    return false
+  }
+}
+
+// Helper function to save a single lote
+async function saveLote(lote: Lote): Promise<boolean> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) throw new Error("Usuario no autenticado")
+
+    // Si el lote no tiene un UUID válido, generar uno nuevo
+    let loteId = lote.id
+    if (!loteId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)) {
+      loteId = generateUUID()
+    }
+
+    const { error } = await supabase.from("lotes").upsert({
+      id: loteId,
+      user_id: user.id,
+      producto_base_id: lote.productoBaseId,
+      numero_lote: lote.numeroLote,
+      identificador: lote.identificador,
+      costo_total_produccion: lote.costoTotalProduccion,
+      margen_ganancia: lote.margenGanancia,
+      precio_venta_final: lote.precioVentaFinal,
+      receta_usada: lote.recetaUsada,
+      tiempo_mano_obra_usado: lote.tiempoManoObraUsado,
+      rendimiento_usado: lote.rendimientoUsado,
+      unidades_por_paquete: lote.unidadesPorPaquete,
+      precio_venta_por_paquete: lote.precioVentaPorPaquete,
+      updated_at: new Date().toISOString(),
+    })
+
+    if (error) throw error
+
+    return true
+  } catch (error) {
+    console.error("Error guardando lote:", error)
+    return false
   }
 }

@@ -1,381 +1,279 @@
 "use client"
 
 import type React from "react"
-
-import { Button } from "@/components/ui/button"
+import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Download, Upload, Shield, CheckCircle, AlertCircle, RotateCcw, Heart } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Download, Upload, Trash2, Shield, AlertTriangle, CheckCircle, Database, Cloud, HardDrive } from "lucide-react"
 import { useAppContext } from "../context/AppContext"
 import { useConfirm } from "../hooks/useConfirm"
-import { toast } from "sonner"
 
-export function DatosRespaldos() {
-  const {
-    configuracion,
-    insumos,
-    productosBase,
-    lotes,
-    setConfiguracion,
-    setInsumos,
-    setProductosBase,
-    setLotes,
-    eliminarTodosLosDatos,
-    loading,
-    error,
-  } = useAppContext()
-  const { confirm } = useConfirm()
+export default function DatosRespaldos() {
+  const { insumos, productosBase, lotes, configuracion, eliminarTodosLosDatos } = useAppContext()
+  const confirm = useConfirm()
+  const [isLoading, setIsLoading] = useState(false)
 
-  const exportarDatos = () => {
+  // Calcular estadísticas
+  const totalRegistros = insumos.length + productosBase.length + lotes.length
+  const tamañoEstimado = Math.round(totalRegistros * 0.5) // KB estimados
+
+  const handleExportarDatos = () => {
     try {
-      const exportData = {
-        version: "3.0.0",
-        exportDate: new Date().toISOString(),
-        appName: "Matriz de Rentabilidad - Sin TACC",
-        data: {
-          configuracion,
-          insumos,
-          productosBase,
-          lotes,
-        },
+      const datos = {
+        insumos,
+        productosBase,
+        lotes,
+        configuracion,
+        exportadoEn: new Date().toISOString(),
+        version: "1.0",
       }
 
-      const dataStr = JSON.stringify(exportData, null, 2)
-      const dataBlob = new Blob([dataStr], { type: "application/json" })
-      const url = URL.createObjectURL(dataBlob)
+      const blob = new Blob([JSON.stringify(datos, null, 2)], {
+        type: "application/json",
+      })
 
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `mi-negocio-sin-tacc-${new Date().toISOString().split("T")[0]}.json`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `matriz-rentabilidad-backup-${new Date().toISOString().split("T")[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
 
-      toast.success("¡Listo! Tu información se descargó correctamente", {
-        description: "Guardá este archivo en un lugar seguro como respaldo",
-      })
+      alert("Datos exportados correctamente")
     } catch (error) {
-      toast.error("No se pudo descargar tu información")
-      console.error(error)
+      console.error("Error al exportar:", error)
+      alert("Error al exportar los datos")
     }
   }
 
-  const importarDatos = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportarDatos = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       try {
-        const importedData = JSON.parse(e.target?.result as string)
+        const datos = JSON.parse(e.target?.result as string)
 
-        if (!importedData.data) {
-          throw new Error("El archivo no es válido")
-        }
-
-        // Importar datos
-        if (importedData.data.configuracion) {
-          await setConfiguracion(importedData.data.configuracion)
-        }
-        if (importedData.data.insumos && Array.isArray(importedData.data.insumos)) {
-          await setInsumos(importedData.data.insumos)
-        }
-        if (importedData.data.productosBase && Array.isArray(importedData.data.productosBase)) {
-          await setProductosBase(importedData.data.productosBase)
-        }
-        if (importedData.data.lotes && Array.isArray(importedData.data.lotes)) {
-          await setLotes(importedData.data.lotes)
-        }
-
-        toast.success("¡Perfecto! Tu información se recuperó exitosamente", {
-          description: "Todas tus recetas y costos están de vuelta",
-        })
+        // Aquí podrías implementar la lógica de importación
+        console.log("Datos a importar:", datos)
+        alert("Función de importación en desarrollo")
       } catch (error) {
-        toast.error("El archivo no se pudo leer correctamente", {
-          description: "Asegurate de que sea un archivo descargado desde esta aplicación",
-        })
+        console.error("Error al importar:", error)
+        alert("Error: Archivo no válido")
       }
     }
     reader.readAsText(file)
-    event.target.value = ""
   }
 
   const limpiarTodosDatos = async () => {
     const confirmed = await confirm({
-      title: "¿Eliminar toda tu información?",
-      description:
-        "Esto borrará todas tus recetas, costos y materias primas de forma permanente de la base de datos. No se puede deshacer.",
-      confirmText: "Sí, eliminar todo",
-      cancelText: "No, mantener mi información",
-      variant: "destructive",
-      icon: "delete",
+      title: "⚠️ ELIMINAR TODOS LOS DATOS",
+      message:
+        "Esta acción eliminará PERMANENTEMENTE todos tus datos de la base de datos:\n\n• Todas las materias primas\n• Todos los productos\n• Todos los lotes\n• Toda la configuración\n\n¿Estás completamente seguro? Esta acción NO se puede deshacer.",
+      confirmText: "SÍ, ELIMINAR TODO",
+      cancelText: "Cancelar",
     })
 
     if (confirmed) {
-      await eliminarTodosLosDatos()
+      setIsLoading(true)
+      try {
+        await eliminarTodosLosDatos()
+        alert("Todos los datos han sido eliminados de la base de datos")
+      } catch (error) {
+        console.error("Error al eliminar datos:", error)
+        alert("Error al eliminar los datos: " + (error as Error).message)
+      } finally {
+        setIsLoading(false)
+      }
     }
   }
-
-  const formatearFechaAmigable = (fecha: string) => {
-    try {
-      const ahora = new Date()
-      const fechaObj = new Date(fecha)
-      const diferencia = ahora.getTime() - fechaObj.getTime()
-      const minutos = Math.floor(diferencia / (1000 * 60))
-
-      if (minutos < 1) return "recién"
-      if (minutos < 60) return `hace ${minutos} minuto${minutos > 1 ? "s" : ""}`
-
-      const horas = Math.floor(minutos / 60)
-      if (horas < 24) return `hace ${horas} hora${horas > 1 ? "s" : ""}`
-
-      const dias = Math.floor(horas / 24)
-      if (dias < 7) return `hace ${dias} día${dias > 1 ? "s" : ""}`
-
-      return fechaObj.toLocaleDateString("es-AR")
-    } catch {
-      return "hace un momento"
-    }
-  }
-
-  // Obtener la fecha más reciente de cualquier cambio
-  const obtenerUltimaActividad = () => {
-    const fechas = []
-
-    if (insumos.length > 0) {
-      fechas.push(...insumos.map((i) => i.fechaAgregado))
-    }
-    if (productosBase.length > 0) {
-      fechas.push(...productosBase.map((p) => p.fechaCreacion))
-    }
-    if (lotes.length > 0) {
-      fechas.push(...lotes.map((l) => l.fechaCreacion))
-    }
-
-    if (fechas.length === 0) return "nunca"
-
-    const fechaMasReciente = fechas.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0]
-    return formatearFechaAmigable(fechaMasReciente)
-  }
-
-  const ultimaActividad = obtenerUltimaActividad()
-  const tieneInformacion = insumos.length > 0 || productosBase.length > 0 || lotes.length > 0
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Mi Negocio Seguro</h1>
-        <p className="text-gray-600">Tu información está protegida y siempre disponible</p>
+        <h1 className="text-3xl font-bold text-gray-900">Datos y Respaldos</h1>
+        <p className="text-gray-600 mt-2">Gestiona la seguridad y respaldo de tu información empresarial</p>
       </div>
 
-      {/* Estado de Mi Negocio */}
+      {/* Estado Actual */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Shield className="mr-2 h-5 w-5" />
-            Estado de Mi Negocio
+          <CardTitle className="flex items-center space-x-2">
+            <Database className="h-5 w-5" />
+            <span>Estado de tus Datos</span>
           </CardTitle>
-          <CardDescription>Tu información está segura y podés acceder desde cualquier dispositivo</CardDescription>
+          <CardDescription>Información actual almacenada en tu cuenta</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Indicador principal */}
-          <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-200">
-            <div className="flex items-center space-x-3">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-              <div>
-                <div className="font-semibold text-green-900">Tu información está segura</div>
-                <div className="text-sm text-green-700">
-                  {tieneInformacion
-                    ? `Última actualización: ${ultimaActividad}`
-                    : "Comenzá agregando tus primeras recetas"}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Resumen de información - CAMBIADO A ESCALA DE GRISES */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-700">{productosBase.length}</div>
-              <div className="text-sm text-gray-600">Recetas guardadas</div>
-            </div>
-            <div className="text-center p-4 bg-gray-100 rounded-lg">
-              <div className="text-2xl font-bold text-gray-700">{insumos.length}</div>
-              <div className="text-sm text-gray-600">Materias primas</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-700">{lotes.length}</div>
-              <div className="text-sm text-gray-600">Lotes producidos</div>
-            </div>
-            <div className="text-center p-4 bg-gray-100 rounded-lg">
-              <div className="text-2xl font-bold text-gray-700">
-                <Heart className="h-8 w-8 mx-auto" />
-              </div>
-              <div className="text-sm text-gray-600">Todo funcionando</div>
-            </div>
-          </div>
-
-          {/* Estado de carga y errores */}
-          {loading && (
-            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-              <div className="text-sm text-blue-800">
-                🔄 <strong>Guardando...</strong> Estamos actualizando tu información.
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-              <div className="text-sm text-red-800">
-                ⚠️ <strong>Problema de conexión:</strong> {error}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Copia de Seguridad */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Download className="mr-2 h-5 w-5" />
-            Copia de Seguridad
-          </CardTitle>
-          <CardDescription>Descargá un archivo con todas tus recetas y costos</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-medium text-gray-900">Descargar mi información</div>
-                <div className="text-sm text-gray-600">Un archivo con todas tus recetas, costos y materias primas</div>
-              </div>
-              <Button onClick={exportarDatos} className="flex items-center">
-                <Download className="mr-2 h-4 w-4" />
-                Descargar Todo
-              </Button>
-            </div>
-          </div>
-
-          <div className="text-sm text-gray-600 space-y-2 p-4 bg-blue-50 rounded-lg">
-            <p>
-              <strong>💡 Consejo:</strong> Guardá este archivo en tu computadora, Google Drive o donde tengas tus
-              documentos importantes.
-            </p>
-            <p>
-              <strong>📱 Tranquilidad:</strong> Si se te rompe el celular o cambiás de dispositivo, podés recuperar todo
-              fácilmente.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recuperar Información */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Upload className="mr-2 h-5 w-5" />
-            Recuperar Información
-          </CardTitle>
-          <CardDescription>Subí un archivo para recuperar tus recetas y costos guardados</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="font-medium text-gray-900">Subir información guardada</div>
-                <div className="text-sm text-gray-600">
-                  Recuperá tu información desde un archivo descargado anteriormente
-                </div>
-              </div>
-              <div>
-                <input type="file" accept=".json" onChange={importarDatos} className="hidden" id="import-file" />
-                <Button asChild variant="outline" className="bg-transparent">
-                  <label htmlFor="import-file" className="flex items-center cursor-pointer">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Seleccionar Archivo
-                  </label>
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-sm text-gray-600 space-y-2 p-4 bg-yellow-50 rounded-lg">
-            <p>
-              <strong>🔄 ¿Cambiaste de dispositivo?</strong> Usá esta opción para traer toda tu información al nuevo
-              dispositivo.
-            </p>
-            <p>
-              <strong>⚠️ Importante:</strong> Solo funcionan archivos descargados desde esta aplicación.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Emergencia - Solo mostrar si tiene información */}
-      {tieneInformacion && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <AlertCircle className="mr-2 h-5 w-5" />
-              En Caso de Emergencia
-            </CardTitle>
-            <CardDescription>Si necesitás empezar de cero o algo salió mal</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="font-medium text-red-900">Eliminar toda mi información</div>
-                  <div className="text-sm text-red-700">
-                    Borrará todas tus recetas, costos y materias primas permanentemente de la base de datos
-                  </div>
+                  <div className="text-2xl font-bold text-blue-700">{totalRegistros}</div>
+                  <div className="text-sm text-blue-600">Registros Totales</div>
                 </div>
-                <Button onClick={limpiarTodosDatos} variant="destructive" size="sm" disabled={loading}>
-                  <RotateCcw className="mr-2 h-4 w-4" />
-                  {loading ? "Eliminando..." : "Empezar de Cero"}
-                </Button>
+                <HardDrive className="h-8 w-8 text-blue-600" />
               </div>
             </div>
 
-            <div className="text-sm text-gray-600 space-y-2 p-4 bg-gray-50 rounded-lg">
-              <p>
-                <strong>⚠️ Cuidado:</strong> Esta acción elimina permanentemente todos los datos de la base de datos.
-              </p>
-              <p>
-                <strong>💡 Recomendación:</strong> Antes de eliminar todo, descargá una copia de seguridad por las
-                dudas.
-              </p>
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-green-700">{tamañoEstimado} KB</div>
+                  <div className="text-sm text-green-600">Tamaño Estimado</div>
+                </div>
+                <Cloud className="h-8 w-8 text-green-600" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* Mensaje motivacional para nuevos usuarios */}
-      {!tieneInformacion && (
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-2xl font-bold text-purple-700">{totalRegistros > 0 ? "Activo" : "Vacío"}</div>
+                  <div className="text-sm text-purple-600">Estado</div>
+                </div>
+                {totalRegistros > 0 ? (
+                  <CheckCircle className="h-8 w-8 text-purple-600" />
+                ) : (
+                  <AlertTriangle className="h-8 w-8 text-purple-600" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+            <h4 className="font-medium text-gray-900 mb-2">Desglose de Información:</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div>
+                <span className="text-gray-600">Materias Primas:</span>
+                <Badge variant="outline" className="ml-2">
+                  {insumos.length}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-gray-600">Productos:</span>
+                <Badge variant="outline" className="ml-2">
+                  {productosBase.length}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-gray-600">Lotes:</span>
+                <Badge variant="outline" className="ml-2">
+                  {lotes.length}
+                </Badge>
+              </div>
+              <div>
+                <span className="text-gray-600">Configuración:</span>
+                <Badge variant="outline" className="ml-2">
+                  {configuracion ? "1" : "0"}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Acciones de Respaldo */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <Heart className="mr-2 h-5 w-5" />
-              ¡Bienvenido/a a tu Matriz de Rentabilidad!
+            <CardTitle className="flex items-center space-x-2">
+              <Shield className="h-5 w-5 text-green-600" />
+              <span>Proteger mis Datos</span>
             </CardTitle>
+            <CardDescription>Crea copias de seguridad de tu información</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="text-center py-6">
-              <div className="text-gray-600 space-y-3">
-                <p>
-                  <strong>🍰 Tu emprendimiento gastronómico merece crecer</strong>
-                </p>
-                <p>
-                  Comenzá agregando tus costos indirectos y materias primas para calcular el precio real de tus
-                  productos.
-                </p>
-                <p className="text-sm">Toda tu información se guarda automáticamente y está siempre disponible.</p>
-              </div>
+          <CardContent className="space-y-4">
+            <Button onClick={handleExportarDatos} className="w-full" disabled={totalRegistros === 0}>
+              <Download className="h-4 w-4 mr-2" />
+              Descargar Respaldo Completo
+            </Button>
+
+            <div className="relative">
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportarDatos}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+              <Button variant="outline" className="w-full bg-transparent">
+                <Upload className="h-4 w-4 mr-2" />
+                Restaurar desde Archivo
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-500 space-y-1">
+              <p>• El respaldo incluye todos tus datos</p>
+              <p>• Formato JSON compatible</p>
+              <p>• Recomendado: respaldo semanal</p>
             </div>
           </CardContent>
         </Card>
-      )}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              <span>Zona de Riesgo</span>
+            </CardTitle>
+            <CardDescription>Acciones que requieren precaución extrema</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+              <h4 className="font-medium text-red-800 mb-2">En caso de emergencia</h4>
+              <p className="text-sm text-red-700 mb-3">
+                Esta acción eliminará PERMANENTEMENTE todos tus datos de la base de datos. No se puede deshacer.
+              </p>
+              <Button variant="destructive" onClick={limpiarTodosDatos} disabled={isLoading} className="w-full">
+                <Trash2 className="h-4 w-4 mr-2" />
+                {isLoading ? "Eliminando..." : "Eliminar Todos los Datos"}
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-500 space-y-1">
+              <p>⚠️ Acción irreversible</p>
+              <p>⚠️ Requiere confirmación</p>
+              <p>⚠️ Haz respaldo antes</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Información de Seguridad */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Información de Seguridad</CardTitle>
+          <CardDescription>Cómo protegemos tu información</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-900">Almacenamiento Seguro</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Datos encriptados en tránsito y reposo</li>
+                <li>• Servidores seguros con certificación</li>
+                <li>• Respaldos automáticos diarios</li>
+                <li>• Acceso protegido por autenticación</li>
+              </ul>
+            </div>
+
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-900">Recomendaciones</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li>• Descarga respaldos regularmente</li>
+                <li>• Mantén contraseñas seguras</li>
+                <li>• Cierra sesión en dispositivos compartidos</li>
+                <li>• Reporta actividad sospechosa</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

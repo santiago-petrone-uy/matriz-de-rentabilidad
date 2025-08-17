@@ -2,7 +2,6 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { Toaster } from "sonner"
 import { ConfirmProvider } from "./hooks/useConfirm"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -23,7 +22,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ConfirmProvider>
           {children}
-          <Toaster position="bottom-right" />
+          {/* Toast container will be added by individual components as needed */}
         </ConfirmProvider>
       </body>
     </html>
