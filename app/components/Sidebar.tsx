@@ -113,16 +113,11 @@ export function Sidebar({ activeView, setActiveView, isCollapsed, setIsCollapsed
           <h1 className="text-xl font-bold text-gray-800">MdR</h1>
           <p className="text-sm text-gray-600">Matriz de Rentabilidad</p>
         </div>
-        {isCollapsed && (
-          <div className="text-center w-full">
-            <div className="text-lg font-bold text-gray-800">MR</div>
-          </div>
-        )}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-1 h-auto hover:bg-gray-100 transition-all duration-200"
+          className={`p-1 h-auto hover:bg-gray-100 transition-all duration-200 ${isCollapsed ? "w-full justify-center" : ""}`}
           title={isCollapsed ? "Expandir menú" : "Colapsar menú"}
         >
           {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

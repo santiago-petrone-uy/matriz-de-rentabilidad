@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress"
 import { BaseModal } from "@/components/ui/BaseModal"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { CurrencyInput, IntegerInput, QuantityInput } from "@/components/ui/numeric-inputs"
 import { Plus, Trash2, Edit, Package } from "lucide-react"
 import { useAppContext, type Insumo } from "../context/AppContext"
 import { useConfirm } from "../hooks/useConfirm"
@@ -620,19 +621,12 @@ export function Insumos({ onPendingChanges }: InsumosProps = {}) {
             {/* 3. Unidades Compradas - fila completa */}
             <div className="space-y-2">
               <Label htmlFor="unidadesCompradas">Unidades Compradas</Label>
-              <Input
+              <IntegerInput
                 id="unidadesCompradas"
-                type="text"
-                inputMode="numeric"
-                value={formData.cantidadPaquetes || ""}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, "")
-                  setFormData((prev) => ({
-                    ...prev,
-                    cantidadPaquetes: Number.parseInt(value) || 1,
-                  }))
-                }}
+                value={formData.cantidadPaquetes}
+                onChange={(value) => setFormData((prev) => ({ ...prev, cantidadPaquetes: value }))}
                 placeholder="1"
+                min={1}
               />
             </div>
 
@@ -659,19 +653,13 @@ export function Insumos({ onPendingChanges }: InsumosProps = {}) {
 
               <div className="space-y-2">
                 <Label htmlFor="pesoVolumenUnidades">Peso/Volumen/Unidades</Label>
-                <Input
+                <QuantityInput
                   id="pesoVolumenUnidades"
-                  type="text"
-                  inputMode="decimal"
-                  value={formData.cantidadCompra || ""}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9.]/g, "")
-                    setFormData((prev) => ({
-                      ...prev,
-                      cantidadCompra: Number.parseFloat(value) || 0,
-                    }))
-                  }}
+                  value={formData.cantidadCompra}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, cantidadCompra: value }))}
                   placeholder="25"
+                  unit={formData.unidadCompra}
+                  showUnit={false}
                 />
               </div>
             </div>
@@ -688,17 +676,13 @@ export function Insumos({ onPendingChanges }: InsumosProps = {}) {
               {/* Input de cantidad actual (solo si el toggle está activado) */}
               {ajustarCantidad && (
                 <div className="space-y-2">
-                  <Label htmlFor="cantidadActual">Cantidad actual disponible ({formData.unidadCompra})</Label>
-                  <Input
+                  <Label htmlFor="cantidadActual">Cantidad actual disponible</Label>
+                  <QuantityInput
                     id="cantidadActual"
-                    type="text"
-                    inputMode="decimal"
-                    value={cantidadActual || ""}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9.]/g, "")
-                      setCantidadActual(Number.parseFloat(value) || 0)
-                    }}
+                    value={cantidadActual}
+                    onChange={setCantidadActual}
                     placeholder={`Ej: ${(formData.cantidadPaquetes * formData.cantidadCompra * 0.8).toFixed(1)}`}
+                    unit={formData.unidadCompra}
                   />
                   <p className="text-xs text-gray-600">
                     Ingresa la cantidad real que tienes disponible actualmente. El sistema calculará automáticamente
@@ -717,19 +701,11 @@ export function Insumos({ onPendingChanges }: InsumosProps = {}) {
 
             {/* 6. Costo Total de la Compra - al final */}
             <div className="space-y-2">
-              <Label htmlFor="costoCompra">Costo Total de la Compra ($)</Label>
-              <Input
+              <Label htmlFor="costoCompra">Costo Total de la Compra</Label>
+              <CurrencyInput
                 id="costoCompra"
-                type="text"
-                inputMode="decimal"
-                value={formData.costoCompra || ""}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9.]/g, "")
-                  setFormData((prev) => ({
-                    ...prev,
-                    costoCompra: Number.parseFloat(value) || 0,
-                  }))
-                }}
+                value={formData.costoCompra}
+                onChange={(value) => setFormData((prev) => ({ ...prev, costoCompra: value }))}
                 placeholder="2125"
               />
             </div>

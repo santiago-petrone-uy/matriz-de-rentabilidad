@@ -5,7 +5,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, CartesianGrid } from 
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useAppContext } from "../context/AppContext"
-import { Package, ChefHat, TrendingUp, Calculator, Clock, Home } from "lucide-react"
+import { Package, ChefHat, TrendingUp, Calculator, Info } from "lucide-react"
 
 export function Dashboard() {
   const { insumos, productosBase, lotes, obtenerUltimoLote } = useAppContext()
@@ -95,7 +95,7 @@ export function Dashboard() {
         <Card className="bg-white border-gray-200">
           <CardHeader>
             <CardTitle className="flex items-center text-gray-900">
-              <Calculator className="mr-2 h-5 w-5" />
+              <Info className="mr-2 h-5 w-5" />
               ¿Cómo funciona la Matriz de Rentabilidad?
             </CardTitle>
             <CardDescription className="text-gray-600">
@@ -110,7 +110,21 @@ export function Dashboard() {
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div
+                className="p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => (window.location.href = "#configuracion-costos")}
+              >
+                <div className="flex items-center mb-2">
+                  <Calculator className="h-5 w-5 text-gray-600 mr-2" />
+                  <h4 className="font-semibold text-gray-800">Costos Indirectos</h4>
+                </div>
+                <p className="text-sm text-gray-600">Tiempo de trabajo, electricidad, gas y gastos operativos.</p>
+              </div>
+
+              <div
+                className="p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => (window.location.href = "#insumos")}
+              >
                 <div className="flex items-center mb-2">
                   <Package className="h-5 w-5 text-gray-600 mr-2" />
                   <h4 className="font-semibold text-gray-800">Materias Primas</h4>
@@ -118,36 +132,16 @@ export function Dashboard() {
                 <p className="text-sm text-gray-600">Costos de las materias primas utilizadas en cada receta.</p>
               </div>
 
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div
+                className="p-4 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => (window.location.href = "#productos")}
+              >
                 <div className="flex items-center mb-2">
-                  <Clock className="h-5 w-5 text-gray-600 mr-2" />
-                  <h4 className="font-semibold text-gray-800">Tiempo</h4>
+                  <ChefHat className="h-5 w-5 text-gray-600 mr-2" />
+                  <h4 className="font-semibold text-gray-800">Productos</h4>
                 </div>
-                <p className="text-sm text-gray-600">
-                  Valor de las horas dedicadas a la preparación, cocción y empaque.
-                </p>
+                <p className="text-sm text-gray-600">Gestiona recetas, costos y márgenes de tus productos.</p>
               </div>
-
-              <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                <div className="flex items-center mb-2">
-                  <Home className="h-5 w-5 text-gray-600 mr-2" />
-                  <h4 className="font-semibold text-gray-800">Gastos Fijos</h4>
-                </div>
-                <p className="text-sm text-gray-600">
-                  Incluye electricidad, gas, alquiler y otros costos mensuales recurrentes.
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4 bg-gray-100 rounded-lg border border-gray-200">
-              <div className="flex items-center mb-2">
-                <TrendingUp className="h-5 w-5 text-gray-600 mr-2" />
-                <h4 className="font-semibold text-gray-800">El Resultado</h4>
-              </div>
-              <p className="text-sm text-gray-600">
-                Conocerás con precisión el costo real de cada producto, lo que te permitirá establecer márgenes de
-                ganancia conscientes y evitar ventas a pérdida.
-              </p>
             </div>
 
             <div className="text-center pt-2">

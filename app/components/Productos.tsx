@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Slider } from "@/components/ui/slider"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { BaseModal } from "@/components/ui/BaseModal"
+import { CurrencyInput, IntegerInput, TimeInput, QuantityInput } from "@/components/ui/numeric-inputs"
 import {
   Plus,
   Trash2,
@@ -426,9 +427,10 @@ function CrearEditarProducto({
 
   const costoTotalProduccion = costoMateriaPrimaUnidad + costoManoObraUnidad + costoCIFUnidad
 
-  // Cálculos de empaque - AHORA POR EMPAQUE
+  // Cálculos de empaque - NUEVA FÓRMULA CORREGIDA
   const costoTotalPorEmpaque = costoTotalProduccion * unidadesPorPaquete
-  const precioVentaSugeridoPorEmpaque = costoTotalPorEmpaque / (1 - margenGanancia[0] / 100)
+  // ✅ FÓRMULA CORREGIDA: Margen sobre costo
+  const precioVentaSugeridoPorEmpaque = costoTotalPorEmpaque * (1 + margenGanancia[0] / 100)
   const precioVentaFinalPorEmpaque = precioVentaFinal || precioVentaSugeridoPorEmpaque
   const precioVentaFinalPorUnidad = precioVentaFinalPorEmpaque / unidadesPorPaquete
 
@@ -699,45 +701,32 @@ function CrearEditarProducto({
 
                 <div className="space-y-2">
                   <Label htmlFor="rendimiento">Rendimiento del Lote (unidades)</Label>
-                  <Input
+                  <IntegerInput
                     id="rendimiento"
-                    type="text"
-                    inputMode="numeric"
-                    value={formData.rendimientoLote || ""}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, "")
-                      setFormData((prev) => ({ ...prev, rendimientoLote: Number.parseInt(value) || 1 }))
-                    }}
+                    value={formData.rendimientoLote}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, rendimientoLote: value }))}
                     placeholder="12"
+                    min={1}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="unidadesPorPaquete">Cantidad de unidades por empaque</Label>
-                  <Input
+                  <IntegerInput
                     id="unidadesPorPaquete"
-                    type="text"
-                    inputMode="numeric"
-                    value={unidadesPorPaquete || ""}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9]/g, "")
-                      setUnidadesPorPaquete(Number.parseInt(value) || 1)
-                    }}
+                    value={unidadesPorPaquete}
+                    onChange={setUnidadesPorPaquete}
                     placeholder="1"
+                    min={1}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tiempoManoObra">Tiempo de Producción por Lote (horas)</Label>
-                  <Input
+                  <Label htmlFor="tiempoManoObra">Tiempo de Producción por Lote</Label>
+                  <TimeInput
                     id="tiempoManoObra"
-                    type="text"
-                    inputMode="decimal"
-                    value={formData.tiempoManoObraLote || ""}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9.]/g, "")
-                      setFormData((prev) => ({ ...prev, tiempoManoObraLote: Number.parseFloat(value) || 0 }))
-                    }}
+                    value={formData.tiempoManoObraLote}
+                    onChange={(value) => setFormData((prev) => ({ ...prev, tiempoManoObraLote: value }))}
                     placeholder="2.5"
                   />
                 </div>
@@ -751,18 +740,38 @@ function CrearEditarProducto({
                   <DollarSign className="mr-2 h-5 w-5" />
                   Estrategia de Precio
                 </CardTitle>
-                <CardDescription>Define tu margen de ganancia y precio de venta</CardDescription>
+                <CardDescription>Define tu margen de ganancia sobre el costo de producción</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label>Margen de ganancia deseado: {margenGanancia[0]}%</Label>
+                  <Label>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="cursor-help">Margen de ganancia deseado: {margenGanancia[0]}%</span>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>
+                          <strong>Margen sobre costo:</strong> {margenGanancia[0]}% significa que el precio será{" "}
+                          {margenGanancia[0]}% más alto que el costo de producción.
+                        </p>
+                        <p className="mt-1 text-xs">
+                          Ejemplo: Costo $100 + {margenGanancia[0]}% = $
+                          {(100 * (1 + margenGanancia[0] / 100)).toFixed(2)}
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
                   <Slider
                     value={margenGanancia}
                     onValueChange={setMargenGanancia}
-                    max={100}
+                    max={350}
                     step={1}
                     className="w-full"
                   />
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>0%</span>
+                    <span>350%</span>
+                  </div>
                 </div>
 
                 <div className="p-4 bg-green-50 rounded-lg">
@@ -775,16 +784,11 @@ function CrearEditarProducto({
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="precioVenta">Precio de Venta por Empaque ($)</Label>
-                  <Input
+                  <Label htmlFor="precioVenta">Precio de Venta por Empaque</Label>
+                  <CurrencyInput
                     id="precioVenta"
-                    type="text"
-                    inputMode="decimal"
-                    value={precioVentaFinal || ""}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9.]/g, "")
-                      setPrecioVentaFinal(Number.parseFloat(value) || 0)
-                    }}
+                    value={precioVentaFinal}
+                    onChange={setPrecioVentaFinal}
                     placeholder={precioVentaSugeridoPorEmpaque.toFixed(2)}
                   />
                 </div>
@@ -794,11 +798,7 @@ function CrearEditarProducto({
                   <div className="p-3 bg-gray-50 rounded-lg">
                     <div className="text-sm text-gray-600">Margen con este precio:</div>
                     <p className="text-lg font-bold text-gray-900">
-                      {(
-                        ((precioVentaFinalPorEmpaque - costoTotalPorEmpaque) / precioVentaFinalPorEmpaque) *
-                        100
-                      ).toFixed(1)}
-                      %
+                      {(((precioVentaFinalPorEmpaque - costoTotalPorEmpaque) / costoTotalPorEmpaque) * 100).toFixed(1)}%
                     </p>
                     <p className="text-xs text-gray-600">
                       Ganancia: ${(precioVentaFinalPorEmpaque - costoTotalPorEmpaque).toFixed(2)} por empaque
@@ -849,15 +849,12 @@ function CrearEditarProducto({
                   </Select>
                 </div>
                 <div className="flex-1">
-                  <Input
-                    type="text"
-                    inputMode="decimal"
+                  <QuantityInput
                     placeholder="Cantidad"
-                    value={cantidadIngrediente || ""}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^0-9.]/g, "")
-                      setCantidadIngrediente(Number.parseFloat(value) || 0)
-                    }}
+                    value={cantidadIngrediente}
+                    onChange={setCantidadIngrediente}
+                    allowDecimals={true}
+                    showUnit={false}
                   />
                 </div>
                 <Tooltip>
@@ -957,19 +954,11 @@ function CrearEditarProducto({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="costoCompraInsumo">Costo Total de la Compra ($) *</Label>
-              <Input
+              <Label htmlFor="costoCompraInsumo">Costo Total de la Compra *</Label>
+              <CurrencyInput
                 id="costoCompraInsumo"
-                type="text"
-                inputMode="decimal"
-                value={formDataInsumo.costoCompra || ""}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9.]/g, "")
-                  setFormDataInsumo((prev) => ({
-                    ...prev,
-                    costoCompra: Number.parseFloat(value) || 0,
-                  }))
-                }}
+                value={formDataInsumo.costoCompra}
+                onChange={(value) => setFormDataInsumo((prev) => ({ ...prev, costoCompra: value }))}
                 placeholder="2125"
               />
             </div>
@@ -977,37 +966,24 @@ function CrearEditarProducto({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="unidadesCompradas">Unidades Compradas *</Label>
-                <Input
+                <IntegerInput
                   id="unidadesCompradas"
-                  type="text"
-                  inputMode="numeric"
-                  value={formDataInsumo.cantidadPaquetes || ""}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, "")
-                    setFormDataInsumo((prev) => ({
-                      ...prev,
-                      cantidadPaquetes: Number.parseInt(value) || 1,
-                    }))
-                  }}
+                  value={formDataInsumo.cantidadPaquetes}
+                  onChange={(value) => setFormDataInsumo((prev) => ({ ...prev, cantidadPaquetes: value }))}
                   placeholder="1"
+                  min={1}
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="pesoVolumenUnidades">Peso/Volumen/Unidades *</Label>
-                <Input
+                <QuantityInput
                   id="pesoVolumenUnidades"
-                  type="text"
-                  inputMode="decimal"
-                  value={formDataInsumo.cantidadCompra || ""}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9.]/g, "")
-                    setFormDataInsumo((prev) => ({
-                      ...prev,
-                      cantidadCompra: Number.parseFloat(value) || 0,
-                    }))
-                  }}
+                  value={formDataInsumo.cantidadCompra}
+                  onChange={(value) => setFormDataInsumo((prev) => ({ ...prev, cantidadCompra: value }))}
                   placeholder="25"
+                  unit={formDataInsumo.unidadCompra}
+                  showUnit={false}
                 />
               </div>
             </div>
@@ -1126,6 +1102,22 @@ function CrearEditarProducto({
               <p className="text-2xl font-bold text-purple-900">${costoTotalPorEmpaque.toFixed(2)}</p>
               <p className="text-xs text-purple-600">
                 ({unidadesPorPaquete} unidad{unidadesPorPaquete !== 1 ? "es" : ""} × ${costoTotalProduccion.toFixed(2)})
+              </p>
+            </div>
+
+            {/* NUEVA SECCIÓN: Explicación de la Fórmula */}
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <div className="text-sm text-green-600 font-medium mb-2">Fórmula de Precio Sugerido</div>
+              <div className="font-mono text-sm text-green-800 bg-white p-2 rounded border">
+                Precio = Costo × (1 + Margen%)
+              </div>
+              <p className="text-xs text-green-600 mt-2">
+                <strong>Ejemplo:</strong> Costo ${costoTotalPorEmpaque.toFixed(2)} × (1 + {margenGanancia[0]}%) = $
+                {precioVentaSugeridoPorEmpaque.toFixed(2)}
+              </p>
+              <p className="text-xs text-green-600 mt-1">
+                <strong>Margen sobre costo:</strong> El precio será {margenGanancia[0]}% más alto que el costo de
+                producción.
               </p>
             </div>
           </div>

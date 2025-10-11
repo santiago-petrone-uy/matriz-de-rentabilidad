@@ -4,10 +4,10 @@ import type React from "react"
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { CurrencyInput, TimeInput } from "@/components/ui/numeric-inputs"
 import { useAppContext } from "../context/AppContext"
 import { toast } from "sonner"
 import { Calculator, Info } from "lucide-react"
@@ -25,10 +25,10 @@ export function ConfiguracionCostos() {
     toast.success("Configuración guardada exitosamente")
   }
 
-  const handleInputChange = (field: keyof typeof formData, value: string) => {
+  const handleInputChange = (field: keyof typeof formData, value: number) => {
     setFormData((prev) => ({
       ...prev,
-      [field]: Number.parseFloat(value) || 0,
+      [field]: value,
     }))
   }
 
@@ -58,17 +58,12 @@ export function ConfiguracionCostos() {
             <CardContent className="space-y-6">
               {/* 1. Valor hora de mano de obra */}
               <div className="space-y-2">
-                <Label htmlFor="valorHora">Valor hora de mano de obra ($)</Label>
-                <Input
+                <Label htmlFor="valorHora">Valor hora de mano de obra</Label>
+                <CurrencyInput
                   id="valorHora"
-                  type="text"
-                  inputMode="decimal"
                   placeholder="250"
-                  value={formData.valorHoraProduccion || ""}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9.]/g, "")
-                    handleInputChange("valorHoraProduccion", value)
-                  }}
+                  value={formData.valorHoraProduccion}
+                  onChange={(value) => handleInputChange("valorHoraProduccion", value)}
                 />
                 <p className="text-xs text-gray-600">
                   Cuánto vale tu tiempo de trabajo por hora. Considera tu experiencia, habilidades y el valor que
@@ -78,17 +73,12 @@ export function ConfiguracionCostos() {
 
               {/* 2. Horas de trabajo mensuales */}
               <div className="space-y-2">
-                <Label htmlFor="horasProduccion">Horas de trabajo mensuales totales (Hs)</Label>
-                <Input
+                <Label htmlFor="horasProduccion">Horas de trabajo mensuales totales</Label>
+                <TimeInput
                   id="horasProduccion"
-                  type="text"
-                  inputMode="decimal"
                   placeholder="160"
-                  value={formData.horasProduccionMensuales || ""}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9.]/g, "")
-                    handleInputChange("horasProduccionMensuales", value)
-                  }}
+                  value={formData.horasProduccionMensuales}
+                  onChange={(value) => handleInputChange("horasProduccionMensuales", value)}
                 />
                 <p className="text-xs text-gray-600">
                   Total de horas que dedicas mensualmente a la producción. Incluye preparación, cocción, enfriado y
@@ -98,17 +88,12 @@ export function ConfiguracionCostos() {
 
               {/* 3. Costos indirectos mensuales */}
               <div className="space-y-2">
-                <Label htmlFor="costosIndirectos">Costos indirectos mensuales totales ($)</Label>
-                <Input
+                <Label htmlFor="costosIndirectos">Costos indirectos mensuales totales</Label>
+                <CurrencyInput
                   id="costosIndirectos"
-                  type="text"
-                  inputMode="decimal"
                   placeholder="27000"
-                  value={formData.costosIndirectosMensuales || ""}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9.]/g, "")
-                    handleInputChange("costosIndirectosMensuales", value)
-                  }}
+                  value={formData.costosIndirectosMensuales}
+                  onChange={(value) => handleInputChange("costosIndirectosMensuales", value)}
                 />
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <div className="flex items-start space-x-2">
