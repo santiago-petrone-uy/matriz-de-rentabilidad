@@ -371,7 +371,7 @@ export function Insumos({ onPendingChanges }: InsumosProps = {}) {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Gestión de Materias Primas</h1>
-            <p className="text-gray-600">Administra tu inventario de materias primas sin TACC</p>
+            <p className="text-gray-600">Administra tu inventario de materias primas</p>
           </div>
 
           <Button onClick={abrirModalNuevo}>

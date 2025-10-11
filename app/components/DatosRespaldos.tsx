@@ -30,7 +30,7 @@ export function DatosRespaldos() {
       const exportData = {
         version: "3.0.0",
         exportDate: new Date().toISOString(),
-        appName: "Matriz de Rentabilidad - Sin TACC",
+        appName: "Matriz de Rentabilidad",
         data: {
           configuracion,
           insumos,

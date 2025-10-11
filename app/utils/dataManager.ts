@@ -289,7 +289,7 @@ export class DataManager {
     const exportData = {
       version: this.CURRENT_VERSION,
       exportDate: new Date().toISOString(),
-      appName: "Matriz de Rentabilidad - Sin TACC",
+      appName: "Accediendo a tu herramienta para calcular costos (MdR)",
       data: {
         configuracion: this.getStoredData(this.STORAGE_KEYS.configuracion),
         insumos: this.getStoredData(this.STORAGE_KEYS.insumos) || [],
